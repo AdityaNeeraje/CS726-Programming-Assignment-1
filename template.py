@@ -32,11 +32,12 @@ class Graph():
         i=self.n
         simplicial = [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1]
         ordering = []
-        while i==self.n:
+        while i>0:
             while simplicial:
                 node = simplicial.pop() # The node is in only one clique
                 ordering.append(node)
-                i=1
+                num_neighbours[node]=0
+                i-=1
                 if (len(self.vertex_to_cliques_mapping[node])==0):
                     continue
                 clique = self.vertex_to_cliques_mapping[node].pop()
@@ -47,7 +48,17 @@ class Graph():
                     if len(self.vertex_to_cliques_mapping[other_node_in_clique])==1:
                         simplicial.append(other_node_in_clique)
                 for neighbour in self.adj[node]:
+                    if num_neighbours[neighbour]==0:
+                        continue
                     num_neighbours[neighbour]-=1
+            if i==0:
+                break
+            element_with_min_neighbours = min([(num_neighbours[i], i) for i in range(self.n) if num_neighbours[i]>0])[1]
+            new_clique = [n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0]
+            new_clique += [intersection]
+            self.add_clique([n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0])
+            print([n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0])
+            break
         print(ordering)
 
 class Inference:
@@ -191,6 +202,7 @@ class Get_Input_and_Check_Output:
 
 
 if __name__ == '__main__':
-    evaluator = Get_Input_and_Check_Output('Sample_Testcase.json')
+    # evaluator = Get_Input_and_Check_Output('Sample_Testcase.json')
+    evaluator = Get_Input_and_Check_Output('Generated_Testcase.json')
     evaluator.get_output()
     evaluator.write_output('Sample_Testcase_Output.json')
