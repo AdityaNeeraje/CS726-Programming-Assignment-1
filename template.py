@@ -9,12 +9,45 @@ import json
 
 ########################################################################
 
+class DSU():
+    def __init__(self, n):
+        self.parent = [i for i in range(n)]
+        self.rank = [0]*n
+        self.n = n
+    
+    def find(self, u):
+        if self.parent[u]==u:
+            return u
+        self.parent[u] = self.find(self.parent[u])
+        return self.parent[u]
+    
+    def union(self, u, v):
+        u = self.find(u)
+        v = self.find(v)
+        if u==v:
+            return
+        if self.rank[u]<self.rank[v]:
+            u, v = v, u
+        self.parent[v] = u
+        if self.rank[u]==self.rank[v]:
+            self.rank[u]+=1
+
 class Graph():
     def __init__(self, n):
         self.adj = [set() for _ in range(n)]
         self.n = n
         self.vertex_to_cliques_mapping = [set() for _ in range(n)]
         self.cliques_to_vertex_mapping = []
+        self.ordering = []
+        self.orig_state = None
+    
+    def store_graph_state(self):
+        self.orig_state = ([set([i for i in s]) for s in self.adj], [set([i for i in s]) for s in self.vertex_to_cliques_mapping], [set([i for i in s]) for s in self.cliques_to_vertex_mapping])
+
+    def restore_state(self):
+        self.adj=[set([i for i in s]) for s in self.orig_state[0]]
+        self.vertex_to_cliques_mapping=[set([i for i in s]) for s in self.orig_state[1]]
+        self.cliques_to_vertex_mapping=[set([i for i in s]) for s in self.orig_state[2]]
 
     def add_clique(self, clique): # clique is a list of vertices, 0-indexed
         for u in clique:
@@ -32,7 +65,7 @@ class Graph():
         self.cliques_to_vertex_mapping[clique_num].clear()
 
     def min_neighbours_heuristic(self):
-        ### TODO Make sure you deep copy before making any move.
+        ### TODO Make sure you deep copy before making any move. -> Nvm, this has been dealt with. I have implemented a save and restore functionality
         num_neighbours = [len(neighbours) for neighbours in self.adj]
         i=self.n
         simplicial = [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and num_neighbours[i]>0]
@@ -40,13 +73,13 @@ class Graph():
         while i>0:
             while simplicial:
                 node = simplicial.pop() # The node is in only one clique
+                ordering.append(node)
                 num_neighbours[node]=0
                 simplicial += [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and i not in simplicial and num_neighbours[i]>0]
                 i-=1
                 if (len(self.vertex_to_cliques_mapping[node])==0):
                     continue
                 clique = self.vertex_to_cliques_mapping[node].pop()
-                ordering.append(self.cliques_to_vertex_mapping[clique].copy())
                 self.cliques_to_vertex_mapping[clique].remove(node)
                 if len(self.cliques_to_vertex_mapping[clique])==1:
                     other_node_in_clique = self.cliques_to_vertex_mapping[clique].pop() 
@@ -76,7 +109,7 @@ class Graph():
             new_clique = [n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0]
             new_clique_copy = set(new_clique.copy())
             new_clique_copy.add(element_with_min_neighbours)
-            ordering.append(new_clique_copy)
+            # ordering.append(element_with_min_neighbours)
             for clique_num in range(len(self.cliques_to_vertex_mapping)):
                 if element_with_min_neighbours in self.cliques_to_vertex_mapping[clique_num]:
                     self.delete_clique(clique_num)
@@ -93,6 +126,113 @@ class Graph():
             self.add_clique(new_clique)
             simplicial.append(element_with_min_neighbours)
         print(ordering)
+        self.ordering = ordering
+
+    def min_fill_heuristic(self):
+        num_neighbours = [len(neighbours) for neighbours in self.adj]
+        num_fill = [sum([u!=v and u not in self.adj[v] for u in self.adj[i] for v in self.adj[i]])//2 for i in range(self.n)]
+        i=self.n
+        simplicial = [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and num_neighbours[i]>0]
+        ordering = [i for i in range(self.n) if num_neighbours[i]==0]
+        while i>0:
+            while simplicial:
+                node = simplicial.pop() # The node is in only one clique
+                ordering.append(node)
+                num_neighbours[node]=0
+                simplicial += [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and i not in simplicial and num_neighbours[i]>0]
+                i-=1
+                if (len(self.vertex_to_cliques_mapping[node])==0):
+                    continue
+                clique = self.vertex_to_cliques_mapping[node].pop()
+                self.cliques_to_vertex_mapping[clique].remove(node)
+                if len(self.cliques_to_vertex_mapping[clique])==1:
+                    other_node_in_clique = self.cliques_to_vertex_mapping[clique].pop() 
+                    self.vertex_to_cliques_mapping[other_node_in_clique].remove(clique)
+                    if len(self.vertex_to_cliques_mapping[other_node_in_clique])==1:
+                        simplicial.append(other_node_in_clique)
+                for neighbour in self.adj[node]:
+                    if num_neighbours[neighbour]==0:
+                        continue
+                    for possible_immorality in self.adj[neighbour]:
+                        if num_neighbours[possible_immorality]==0:
+                            continue
+                        if possible_immorality==node:
+                            continue
+                        if possible_immorality not in self.adj[node]:
+                            num_fill[neighbour]-=1    
+                    num_neighbours[neighbour]-=1
+            if i==0:
+                break
+            # print([i for i in range(self.n) if num_neighbours[i]>0])
+            element_with_min_neighbours = min([(num_fill[i], i) for i in range(self.n) if num_neighbours[i]>0])[1]
+            for neighbour1 in self.adj[element_with_min_neighbours]:
+                if num_neighbours[neighbour1]==0:
+                    continue 
+                for neighbour2 in self.adj[element_with_min_neighbours]:
+                    if num_neighbours[neighbour2]==0:
+                        continue
+                    if neighbour1==neighbour2:
+                        continue
+                    if neighbour2 not in self.adj[neighbour1]:
+                        self.adj[neighbour1].add(neighbour2)
+                        self.adj[neighbour2].add(neighbour1)
+                        num_neighbours[neighbour1]+=1
+                        num_neighbours[neighbour2]+=1
+            new_clique = [n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0]
+            new_clique_copy = set(new_clique.copy())
+            new_clique_copy.add(element_with_min_neighbours)
+            # ordering.append(element_with_min_neighbours)
+            for clique_num in range(len(self.cliques_to_vertex_mapping)):
+                if element_with_min_neighbours in self.cliques_to_vertex_mapping[clique_num]:
+                    self.delete_clique(clique_num)
+            # Expand new_clique with all nodes that are now in the same clique
+            # For any clique now majorized by the new large clique, delete it
+            for node in range(self.n):
+                if not node==element_with_min_neighbours and all([parent in self.adj[node] for parent in new_clique]):
+                    new_clique.append(node)
+            for clique_num in range(len(self.cliques_to_vertex_mapping)):
+                if all([node in new_clique for node in self.cliques_to_vertex_mapping[clique_num]]):
+                    self.delete_clique(clique_num)
+                elif element_with_min_neighbours in self.cliques_to_vertex_mapping[clique_num]:
+                    self.delete_clique(clique_num)
+            self.add_clique(new_clique)
+            simplicial.append(element_with_min_neighbours)
+        print(ordering)
+        self.ordering = ordering
+
+class JunctionTree():
+    def __init__(self, adj, simplicial_ordering):
+        self.n = len(simplicial_ordering)
+        self.cliques = []
+        excluded = set()
+        self.sep_sets = []
+        for i in range(self.n):
+            self.cliques.append([simplicial_ordering[i]])
+            self.cliques[-1]+=[a for a in adj[simplicial_ordering[i]] if a not in excluded]
+            self.cliques[-1]=clique=set(self.cliques[-1])
+            self.sep_sets.append([])
+            for j in range(len(self.cliques)-1):
+                sep_set = clique & self.cliques[j]
+                self.sep_sets[-1].append(-len(sep_set))
+                if len(sep_set)==len(clique):
+                    self.cliques.pop()
+                    self.sep_sets.pop()
+                    break
+            excluded.add(simplicial_ordering[i])
+        self.get_junction_tree()
+    
+    def get_junction_tree(self):
+        # I also want to store a parent relation. The junction tree algorithm can work in two passes then.
+        # Since my simplicial ordering should select leaf nodes first, then my parent must be the greaer index out of (i, j) when i-j is an edge
+        self.dsu = DSU(self.n)
+        self.sep_sets_list = [(self.sep_sets[i][j], i, j) for i in range(len(self.sep_sets)) for j in range(len(self.sep_sets[i]))]
+        self.sep_sets_list.sort()
+        final_edges = []
+        for edge in self.sep_sets_list:
+            if self.dsu.find(edge[1])!=self.dsu.find(edge[2]):
+                final_edges.append((self.cliques[edge[1]] & self.cliques[edge[2]], self.cliques[edge[1]], self.cliques[edge[2]]))
+                self.dsu.union(edge[1], edge[2])
+        # print(final_edges)
 
 class Inference:
     def __init__(self, data):
@@ -116,7 +256,14 @@ class Inference:
         self.graph = Graph(self.variables_count)
         for clique in data['Cliques and Potentials']:
             self.graph.add_clique(clique['cliques'])
+        self.graph.store_graph_state()
         self.graph.min_neighbours_heuristic()
+        self.junction_tree = JunctionTree(self.graph.adj, self.graph.ordering)
+        self.graph.restore_state()
+        self.graph.min_fill_heuristic()
+        self.junction_tree = JunctionTree(self.graph.adj, self.graph.ordering)
+        self.graph.restore_state()
+        ### TODO This is a bad method of saving and restoring, which I am using for now. Improve this later.
 
     def triangulate_and_get_cliques(self):
         """
