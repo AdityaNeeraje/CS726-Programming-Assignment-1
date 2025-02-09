@@ -32,6 +32,15 @@ class DSU():
         if self.rank[u]==self.rank[v]:
             self.rank[u]+=1
 
+class Clique:
+    def __init__(self, variables):
+        self.n = len(variables)
+        self.variables = variables
+        self.potentials = [1 for _ in range(2**self.n)]
+
+    def factor_in(self, subclique_vars, subclique_potentials):
+        pass
+    
 class Graph():
     def __init__(self, n):
         self.adj = [set() for _ in range(n)]
@@ -125,7 +134,7 @@ class Graph():
                     self.delete_clique(clique_num)
             self.add_clique(new_clique)
             simplicial.append(element_with_min_neighbours)
-        print(ordering)
+        # print(ordering)
         self.ordering = ordering
 
     def min_fill_heuristic(self):
@@ -197,7 +206,6 @@ class Graph():
                     self.delete_clique(clique_num)
             self.add_clique(new_clique)
             simplicial.append(element_with_min_neighbours)
-        print(ordering)
         self.ordering = ordering
 
 class JunctionTree():
@@ -219,20 +227,36 @@ class JunctionTree():
                     self.sep_sets.pop()
                     break
             excluded.add(simplicial_ordering[i])
+        self.cliques=[Clique(clique) for clique in self.cliques] # At this step, I am converting this to an array of cliques
         self.get_junction_tree()
     
     def get_junction_tree(self):
         # I also want to store a parent relation. The junction tree algorithm can work in two passes then.
         # Since my simplicial ordering should select leaf nodes first, then my parent must be the greaer index out of (i, j) when i-j is an edge
-        self.dsu = DSU(self.n)
+        self.dsu = DSU(len(self.cliques))
         self.sep_sets_list = [(self.sep_sets[i][j], i, j) for i in range(len(self.sep_sets)) for j in range(len(self.sep_sets[i]))]
         self.sep_sets_list.sort()
-        final_edges = []
+        self.final_edges = [[] for _ in range(len(self.cliques))]
         for edge in self.sep_sets_list:
             if self.dsu.find(edge[1])!=self.dsu.find(edge[2]):
-                final_edges.append((self.cliques[edge[1]] & self.cliques[edge[2]], self.cliques[edge[1]], self.cliques[edge[2]]))
+                # final_edges.append((self.cliques[edge[1]] & self.cliques[edge[2]], self.cliques[edge[1]], self.cliques[edge[2]]))
+                self.final_edges[edge[1]].append(edge[2])
+                self.final_edges[edge[2]].append(edge[1])
                 self.dsu.union(edge[1], edge[2])
-        # print(final_edges)
+        self.dfs()
+
+    def dfs(self):
+        st = [0]
+        self.parents = [None]*(len(self.cliques))
+        self.parents[0]=0
+        visited = [False]*len(self.cliques)
+        while st:
+            curr = st.pop()
+            visited[curr]=True
+            for neighbour in self.final_edges[curr]:
+                if not visited[neighbour]:
+                    st.append(neighbour)
+                    self.parents[neighbour]=curr
 
 class Inference:
     def __init__(self, data):
@@ -251,18 +275,14 @@ class Inference:
         
         Refer to the sample test case for the structure of the input data.
         """
+        self.data_cliques = data['Cliques and Potentials']
         self.variables_count = data['VariablesCount']
         self.k = data['k value (in top k)']
         self.graph = Graph(self.variables_count)
         for clique in data['Cliques and Potentials']:
             self.graph.add_clique(clique['cliques'])
         self.graph.store_graph_state()
-        self.graph.min_neighbours_heuristic()
-        self.junction_tree = JunctionTree(self.graph.adj, self.graph.ordering)
-        self.graph.restore_state()
-        self.graph.min_fill_heuristic()
-        self.junction_tree = JunctionTree(self.graph.adj, self.graph.ordering)
-        self.graph.restore_state()
+        # self.triangulate_and_get_cliques()
         ### TODO This is a bad method of saving and restoring, which I am using for now. Improve this later.
 
     def triangulate_and_get_cliques(self):
@@ -277,7 +297,9 @@ class Inference:
 
         Refer to the problem statement for details on triangulation and clique extraction.
         """
-        pass
+        self.graph.min_fill_heuristic()
+        # self.graph.min_fill_heuristic()
+        # self.graph.restore_state()
 
     def get_junction_tree(self):
         """
@@ -291,7 +313,7 @@ class Inference:
 
         Refer to the problem statement for details on junction tree construction.
         """
-        pass
+        self.junction_tree = JunctionTree(self.graph.adj, self.graph.ordering)
 
     def assign_potentials_to_cliques(self):
         """
@@ -304,6 +326,13 @@ class Inference:
         
         Refer to the sample test case for how potentials are associated with cliques.
         """
+        cliques = self.junction_tree.cliques
+        for clique in self.data_cliques:
+            clique_set = set(clique)
+            for i in range(len(cliques)):
+                if len(set(cliques[i].variables)&clique_set)==len(clique_set):
+                    # cliques[i].potential = clique['potentials']
+                    break
         pass
 
     def get_z_value(self):

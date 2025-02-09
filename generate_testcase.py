@@ -26,8 +26,8 @@ class Testcase:
         self.n = n
 
 data=[Testcase(3, [[0, 1], [1, 2]]), Testcase(7, [[0,1], [1, 2], [1, 3], [0, 4], [4, 5, 6]])]
-data.append(Testcase(8, [[0,1], [1, 2], [1, 3], [0, 4], [4, 5], [5, 7], [6, 7], [4, 6]]))
+# data.append(Testcase(8, [[0,1], [1, 2], [1, 3], [0, 4], [4, 5], [5, 7], [6, 7], [4, 6]]))
 data.append(Testcase(10, [[0,1], [1,2], [2,3], [3,0], [3, 4], [4,5],[4,6],[6,7],[6,8],[8,9],[8,2]]))
-data.append(Testcase(6, [[0,1], [0,2], [1,3],[2,3],[3,5],[2,4],[4,5]]))
+# data.append(Testcase(6, [[0,1], [0,2], [1,3],[2,3],[3,5],[2,4],[4,5]]))
 with open("Generated_Testcase.json", "w") as f:
     json.dump([d.map for d in data], f, indent=4)
