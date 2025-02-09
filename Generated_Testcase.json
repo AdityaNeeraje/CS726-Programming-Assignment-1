@@ -231,5 +231,159 @@
             ],
             "k value (in top k)": 2
         }
+    },
+    {
+        "TestCaseNumber": 4,
+        "Input": {
+            "TestCaseNumber": 4,
+            "VariablesCount": 10,
+            "Potentials_count": 11,
+            "Cliques and Potentials": [
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        0,
+                        1
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        1,
+                        2
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        2,
+                        3
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        3,
+                        0
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        3,
+                        4
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        4,
+                        5
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        4,
+                        6
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        6,
+                        7
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        6,
+                        8
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        8,
+                        9
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        8,
+                        2
+                    ],
+                    "potentials": [
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            ],
+            "k value (in top k)": 2
+        }
     }
 ]

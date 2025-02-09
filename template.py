@@ -26,21 +26,27 @@ class Graph():
                 self.adj[v].add(u)
         self.cliques_to_vertex_mapping.append(set(clique))
 
+    def delete_clique(self, clique_num):    
+        for u in self.cliques_to_vertex_mapping[clique_num]:
+            self.vertex_to_cliques_mapping[u].remove(clique_num)
+        self.cliques_to_vertex_mapping[clique_num].clear()
+
     def min_neighbours_heuristic(self):
-        oo=1e9
+        ### TODO Make sure you deep copy before making any move.
         num_neighbours = [len(neighbours) for neighbours in self.adj]
         i=self.n
-        simplicial = [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1]
-        ordering = []
+        simplicial = [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and num_neighbours[i]>0]
+        ordering = [i for i in range(self.n) if num_neighbours[i]==0]
         while i>0:
             while simplicial:
                 node = simplicial.pop() # The node is in only one clique
-                ordering.append(node)
                 num_neighbours[node]=0
+                simplicial += [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and i not in simplicial and num_neighbours[i]>0]
                 i-=1
                 if (len(self.vertex_to_cliques_mapping[node])==0):
                     continue
                 clique = self.vertex_to_cliques_mapping[node].pop()
+                ordering.append(self.cliques_to_vertex_mapping[clique].copy())
                 self.cliques_to_vertex_mapping[clique].remove(node)
                 if len(self.cliques_to_vertex_mapping[clique])==1:
                     other_node_in_clique = self.cliques_to_vertex_mapping[clique].pop() 
@@ -54,11 +60,38 @@ class Graph():
             if i==0:
                 break
             element_with_min_neighbours = min([(num_neighbours[i], i) for i in range(self.n) if num_neighbours[i]>0])[1]
+            for neighbour1 in self.adj[element_with_min_neighbours]:
+                if num_neighbours[neighbour1]==0:
+                    continue 
+                for neighbour2 in self.adj[element_with_min_neighbours]:
+                    if num_neighbours[neighbour2]==0:
+                        continue
+                    if neighbour1==neighbour2:
+                        continue
+                    if neighbour2 not in self.adj[neighbour1]:
+                        self.adj[neighbour1].add(neighbour2)
+                        self.adj[neighbour2].add(neighbour1)
+                        num_neighbours[neighbour1]+=1
+                        num_neighbours[neighbour2]+=1
             new_clique = [n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0]
-            new_clique += [intersection]
-            self.add_clique([n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0])
-            print([n for n in self.adj[element_with_min_neighbours] if num_neighbours[n] > 0])
-            break
+            new_clique_copy = set(new_clique.copy())
+            new_clique_copy.add(element_with_min_neighbours)
+            ordering.append(new_clique_copy)
+            for clique_num in range(len(self.cliques_to_vertex_mapping)):
+                if element_with_min_neighbours in self.cliques_to_vertex_mapping[clique_num]:
+                    self.delete_clique(clique_num)
+            # Expand new_clique with all nodes that are now in the same clique
+            # For any clique now majorized by the new large clique, delete it
+            for node in range(self.n):
+                if not node==element_with_min_neighbours and all([parent in self.adj[node] for parent in new_clique]):
+                    new_clique.append(node)
+            for clique_num in range(len(self.cliques_to_vertex_mapping)):
+                if all([node in new_clique for node in self.cliques_to_vertex_mapping[clique_num]]):
+                    self.delete_clique(clique_num)
+                elif element_with_min_neighbours in self.cliques_to_vertex_mapping[clique_num]:
+                    self.delete_clique(clique_num)
+            self.add_clique(new_clique)
+            simplicial.append(element_with_min_neighbours)
         print(ordering)
 
 class Inference:
