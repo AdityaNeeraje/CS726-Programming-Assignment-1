@@ -1,5 +1,5 @@
 import json
-
+import heapq
 
 
 ########################################################################
@@ -8,6 +8,12 @@ import json
 # json, math, itertools, collections, functools, random, heapq, etc.
 
 ########################################################################
+
+def max_func(a, b):
+    return max(a, b)
+
+def sum_func(a, b):
+    return a+b
 
 class DSU():
     def __init__(self, n):
@@ -37,9 +43,58 @@ class Clique:
         self.n = len(variables)
         self.variables = variables
         self.potentials = [1 for _ in range(2**self.n)]
+        self.vars_mapping = {var: i for i, var in enumerate(self.variables)}
+        self.num_children=0
+        self.message = None
+    
+    def save_state(self):
+        self.potentials_copy = self.potentials.copy()
+        self.num_children_copy = self.num_children
+    
+    def restore_state(self):
+        self.potentials = self.potentials_copy.copy()
+        self.num_children = self.num_children_copy
 
     def factor_in(self, subclique_vars, subclique_potentials):
-        pass
+        subclique_vars_to_use=list(subclique_vars)
+        for j in range(len(self.potentials)):
+            bits_j=bin(j)[2:].zfill(self.n)
+            bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
+            # print(bits_i)
+            self.potentials[j]*=subclique_potentials[bits_i]
+        # for i in range(2**len(subclique_vars)):
+        #     bits_i = ["0" for i in range(self.n)]
+        #     binary_repr_of_i = bin(i)[2:].zfill(len(subclique_vars))
+        #     for k in range(len(subclique_vars)):
+        #         bits_i[self.vars_mapping[subclique_vars[k]]]=binary_repr_of_i[k]
+        #     bits_i = int(''.join(bits_i), 2)
+        #     val = subclique_potentials[i]
+        #     for j in range(0, len(self.potentials), 2**len(subclique_vars)):
+        #         self.potentials[j+bits_i]*=val
+        # print(subclique_vars, self.potentials)
+    
+    def factor_out(self, subclique_vars, subclique_potentials):
+        subclique_vars_to_use=list(subclique_vars)
+        for j in range(len(self.potentials)):
+            bits_j=bin(j)[2:].zfill(self.n)
+            bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
+            # print(bits_i)
+            self.potentials[j]=self.potentials[j]//subclique_potentials[bits_i]
+
+    def marginalize(self, subclique_vars, marginalization_func):
+        subclique_vars_to_use=list(subclique_vars)
+        resulting_potentials = [-1 for _ in range(2**len(subclique_vars))]
+        for j in range(len(self.potentials)):
+            bits_j=bin(j)[2:].zfill(self.n)
+            if subclique_vars_to_use:
+                bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
+            else:
+                bits_i=0
+            if resulting_potentials[bits_i]==-1:
+                resulting_potentials[bits_i]=self.potentials[j]
+            else:
+                resulting_potentials[bits_i]=marginalization_func(self.potentials[j], resulting_potentials[bits_i])
+        return resulting_potentials
     
 class Graph():
     def __init__(self, n):
@@ -228,6 +283,7 @@ class JunctionTree():
                     break
             excluded.add(simplicial_ordering[i])
         self.cliques=[Clique(clique) for clique in self.cliques] # At this step, I am converting this to an array of cliques
+        self.upward_pass_order = []
         self.get_junction_tree()
     
     def get_junction_tree(self):
@@ -244,6 +300,8 @@ class JunctionTree():
                 self.final_edges[edge[2]].append(edge[1])
                 self.dsu.union(edge[1], edge[2])
         self.dfs()
+        for clique in self.cliques:
+            clique.save_state()     
 
     def dfs(self):
         st = [0]
@@ -257,6 +315,33 @@ class JunctionTree():
                 if not visited[neighbour]:
                     st.append(neighbour)
                     self.parents[neighbour]=curr
+                    self.cliques[curr].num_children+=1
+
+    def upward_pass(self, marginalization_func):
+        self.upward_pass_order=[]
+        leaf_nodes = [i for i in range(len(self.cliques)) if self.cliques[i].num_children==0]
+        i=0
+        while i+1<len(self.cliques):
+            i+=1
+            leaf_node = leaf_nodes.pop()
+            self.upward_pass_order.append(leaf_node)
+            parent = self.parents[leaf_node]
+            sep_set = self.cliques[leaf_node].variables&self.cliques[parent].variables
+            self.cliques[leaf_node].message = self.cliques[leaf_node].marginalize(sep_set, marginalization_func)
+            self.cliques[parent].factor_in(sep_set, self.cliques[leaf_node].message)
+            self.cliques[parent].num_children-=1
+            if self.cliques[parent].num_children==0:
+                leaf_nodes.append(parent)
+
+    def downward_pass(self, marginalization_func):
+        self.upward_pass_order.reverse()
+        for curr_node in self.upward_pass_order:
+            parent = self.parents[curr_node]
+            sep_set = self.cliques[curr_node].variables&self.cliques[parent].variables
+            self.cliques[parent].factor_out(sep_set, self.cliques[curr_node].message)
+            message = self.cliques[parent].marginalize(sep_set, marginalization_func)
+            self.cliques[curr_node].factor_in(sep_set, message)
+            self.cliques[parent].factor_in(sep_set, self.cliques[curr_node].message)
 
 class Inference:
     def __init__(self, data):
@@ -279,7 +364,10 @@ class Inference:
         self.variables_count = data['VariablesCount']
         self.k = data['k value (in top k)']
         self.graph = Graph(self.variables_count)
+        self.Z = None
         for clique in data['Cliques and Potentials']:
+            ### TODO First check if the clique is already there. This is very important for the algorithm, but it is okay to do this with slightly bad complexity.
+            ### I would implement this as follows: add all cliques in decreasing order of size. When adding a clique, check if it actually adds a new edge. If it doesn't, return
             self.graph.add_clique(clique['cliques'])
         self.graph.store_graph_state()
         # self.triangulate_and_get_cliques()
@@ -328,12 +416,13 @@ class Inference:
         """
         cliques = self.junction_tree.cliques
         for clique in self.data_cliques:
-            clique_set = set(clique)
+            clique_set = set(clique['cliques'])
             for i in range(len(cliques)):
                 if len(set(cliques[i].variables)&clique_set)==len(clique_set):
-                    # cliques[i].potential = clique['potentials']
+                    cliques[i].factor_in(clique['cliques'], clique['potentials'])
                     break
-        pass
+        # for clique in cliques:
+        #     print(clique.variables, clique.potentials)
 
     def get_z_value(self):
         """
@@ -346,7 +435,17 @@ class Inference:
         
         Refer to the problem statement for details on computing the partition function.
         """
-        pass
+        self.junction_tree.upward_pass(sum_func)
+        z=self.junction_tree.cliques[0].marginalize(set(), sum_func)[0]
+        # self.junction_tree.downward_pass(sum_func)
+        # for clique in self.junction_tree.cliques:
+        #     print(clique.potentials)
+        ### NOTE Here, I am not restoring state, since the current state of the tree can be used for marginal queries too
+        # for clique in self.junction_tree.cliques:
+        #     clique.restore_state()
+        self.Z=z
+        return z
+        
 
     def compute_marginals(self):
         """
@@ -359,7 +458,14 @@ class Inference:
         
         Refer to the sample test case for the expected format of the marginals.
         """
-        pass
+        self.junction_tree.downward_pass(sum_func)
+        marginals = []
+        for var in range(self.variables_count):
+            for clique in self.junction_tree.cliques:
+                if var in clique.variables:
+                    marginals.append([value/self.Z for value in clique.marginalize({var}, sum_func)])
+                    break
+        print(marginals)
 
     def compute_top_k(self):
         """
@@ -412,6 +518,6 @@ class Get_Input_and_Check_Output:
 
 if __name__ == '__main__':
     # evaluator = Get_Input_and_Check_Output('Sample_Testcase.json')
-    evaluator = Get_Input_and_Check_Output('Generated_Testcase.json')
+    evaluator = Get_Input_and_Check_Output('Sample_Testcase.json')
     evaluator.get_output()
     evaluator.write_output('Sample_Testcase_Output.json')
