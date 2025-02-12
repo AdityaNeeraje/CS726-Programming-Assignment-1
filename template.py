@@ -15,6 +15,19 @@ def max_func(a, b):
 def sum_func(a, b):
     return a+b
 
+def product_func(a, b):
+    if b!=0:
+        return a[0]*b, a[1]*b
+    elif a[0]==0:
+        return 0, 0
+    else:
+        return 0, a[0]
+
+def product_inv_func(a, b):
+    if b!=0:
+        return a[0]//b, a[1]//b
+    return a[1], a[1]
+    
 class DSU():
     def __init__(self, n):
         self.parent = [i for i in range(n)]
@@ -42,7 +55,7 @@ class Clique:
     def __init__(self, variables):
         self.n = len(variables)
         self.variables = variables
-        self.potentials = [1 for _ in range(2**self.n)]
+        self.potentials = [(1, 1) for _ in range(2**self.n)]
         self.vars_mapping = {var: i for i, var in enumerate(self.variables)}
         self.num_children=0
         self.message = None
@@ -61,7 +74,7 @@ class Clique:
             bits_j=bin(j)[2:].zfill(self.n)
             bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
             # print(bits_i)
-            self.potentials[j]*=subclique_potentials[bits_i]
+            self.potentials[j]=product_func(self.potentials[j], subclique_potentials[bits_i])
         # for i in range(2**len(subclique_vars)):
         #     bits_i = ["0" for i in range(self.n)]
         #     binary_repr_of_i = bin(i)[2:].zfill(len(subclique_vars))
@@ -79,7 +92,7 @@ class Clique:
             bits_j=bin(j)[2:].zfill(self.n)
             bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
             # print(bits_i)
-            self.potentials[j]=self.potentials[j]//subclique_potentials[bits_i]
+            self.potentials[j]=product_inv_func(self.potentials[j], subclique_potentials[bits_i])
 
     def marginalize(self, subclique_vars, marginalization_func):
         subclique_vars_to_use=list(subclique_vars)
@@ -91,9 +104,9 @@ class Clique:
             else:
                 bits_i=0
             if resulting_potentials[bits_i]==-1:
-                resulting_potentials[bits_i]=self.potentials[j]
+                resulting_potentials[bits_i]=self.potentials[j][0]
             else:
-                resulting_potentials[bits_i]=marginalization_func(self.potentials[j], resulting_potentials[bits_i])
+                resulting_potentials[bits_i]=marginalization_func(self.potentials[j][0], resulting_potentials[bits_i])
         return resulting_potentials
     
 class Graph():
@@ -465,7 +478,9 @@ class Inference:
                 if var in clique.variables:
                     marginals.append([value/self.Z for value in clique.marginalize({var}, sum_func)])
                     break
-        print(marginals)
+        for clique in self.junction_tree.cliques:
+            clique.restore_state()
+        return marginals
 
     def compute_top_k(self):
         """
