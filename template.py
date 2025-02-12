@@ -9,6 +9,8 @@ import heapq
 
 ########################################################################
 
+k=0
+
 def max_func(a, b):
     return max(a, b)
 
@@ -27,7 +29,17 @@ def product_inv_func(a, b):
     if b!=0:
         return a[0]//b, a[1]//b
     return a[1], a[1]
+
+# def marginalization_for_k_map_assignments(a, b):
+#     if len(a) < k or b[0]
     
+# class Assignment():
+#     def __init__(self):
+#         self.vars_mapping = {}
+#         self.potential = 1
+    
+#     def combine_with(self, assignment):
+
 class DSU():
     def __init__(self, n):
         self.parent = [i for i in range(n)]
@@ -68,13 +80,13 @@ class Clique:
         self.potentials = self.potentials_copy.copy()
         self.num_children = self.num_children_copy
 
-    def factor_in(self, subclique_vars, subclique_potentials):
+    def factor_in(self, subclique_vars, subclique_potentials, composition_func=product_func):
         subclique_vars_to_use=list(subclique_vars)
         for j in range(len(self.potentials)):
             bits_j=bin(j)[2:].zfill(self.n)
             bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
             # print(bits_i)
-            self.potentials[j]=product_func(self.potentials[j], subclique_potentials[bits_i])
+            self.potentials[j]=composition_func(self.potentials[j], subclique_potentials[bits_i])
         # for i in range(2**len(subclique_vars)):
         #     bits_i = ["0" for i in range(self.n)]
         #     binary_repr_of_i = bin(i)[2:].zfill(len(subclique_vars))
@@ -86,13 +98,13 @@ class Clique:
         #         self.potentials[j+bits_i]*=val
         # print(subclique_vars, self.potentials)
     
-    def factor_out(self, subclique_vars, subclique_potentials):
+    def factor_out(self, subclique_vars, subclique_potentials, inverse_composition_func=product_inv_func):
         subclique_vars_to_use=list(subclique_vars)
         for j in range(len(self.potentials)):
             bits_j=bin(j)[2:].zfill(self.n)
             bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
             # print(bits_i)
-            self.potentials[j]=product_inv_func(self.potentials[j], subclique_potentials[bits_i])
+            self.potentials[j]=inverse_composition_func(self.potentials[j], subclique_potentials[bits_i])
 
     def marginalize(self, subclique_vars, marginalization_func):
         subclique_vars_to_use=list(subclique_vars)
@@ -240,7 +252,6 @@ class Graph():
                     num_neighbours[neighbour]-=1
             if i==0:
                 break
-            # print([i for i in range(self.n) if num_neighbours[i]>0])
             element_with_min_neighbours = min([(num_fill[i], i) for i in range(self.n) if num_neighbours[i]>0])[1]
             for neighbour1 in self.adj[element_with_min_neighbours]:
                 if num_neighbours[neighbour1]==0:
@@ -330,7 +341,7 @@ class JunctionTree():
                     self.parents[neighbour]=curr
                     self.cliques[curr].num_children+=1
 
-    def upward_pass(self, marginalization_func):
+    def upward_pass(self, marginalization_func, composition_func=product_func):
         self.upward_pass_order=[]
         leaf_nodes = [i for i in range(len(self.cliques)) if self.cliques[i].num_children==0]
         i=0
@@ -341,12 +352,13 @@ class JunctionTree():
             parent = self.parents[leaf_node]
             sep_set = self.cliques[leaf_node].variables&self.cliques[parent].variables
             self.cliques[leaf_node].message = self.cliques[leaf_node].marginalize(sep_set, marginalization_func)
-            self.cliques[parent].factor_in(sep_set, self.cliques[leaf_node].message)
+            self.cliques[parent].factor_in(sep_set, self.cliques[leaf_node].message, composition_func)
             self.cliques[parent].num_children-=1
             if self.cliques[parent].num_children==0:
                 leaf_nodes.append(parent)
 
     def downward_pass(self, marginalization_func):
+        # None of our expected outputs requires specialized inverse composition functions in downward_pass
         self.upward_pass_order.reverse()
         for curr_node in self.upward_pass_order:
             parent = self.parents[curr_node]
@@ -373,9 +385,11 @@ class Inference:
         
         Refer to the sample test case for the structure of the input data.
         """
+        global k
         self.data_cliques = data['Cliques and Potentials']
         self.variables_count = data['VariablesCount']
         self.k = data['k value (in top k)']
+        k=self.k
         self.graph = Graph(self.variables_count)
         self.Z = None
         for clique in data['Cliques and Potentials']:
