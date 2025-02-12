@@ -34,8 +34,9 @@ def marginalization_for_k_map_assignments(a, b):
     ### NOTE that b is completely deleted after this. This is only useful when there is no backward pass needed, as in our case
     while b:
         heapq.heappush(a, heapq.heappop(b))
-    while len(a) > k:
+    while len(a) > k: 
         heapq.heappop(a)
+    return a
     
 def composition_for_k_map_assignments(a, b): # a and b are both heapq's
     result = []
@@ -43,7 +44,7 @@ def composition_for_k_map_assignments(a, b): # a and b are both heapq's
     while a:
         a_top = heapq.heappop(a)
         for b_element in b_list:
-            heapq.heappush(result, ("".join([a_top[0][i] if a_top[0][i]!='x' else b_element[0][i] for i in range(len(a_top[0]))]), a_top[1]*b_element[1]))
+            heapq.heappush(result, (a_top[0]*b_element[0], "".join([a_top[1][i] if a_top[1][i]!='x' else b_element[1][i] for i in range(len(a_top[1]))])))
     while len(result) > k:
         heapq.heappop(result)
     return result
@@ -128,7 +129,22 @@ class Clique:
             else:
                 resulting_potentials[bits_i]=marginalization_func(self.potentials[j][0], resulting_potentials[bits_i])
         return resulting_potentials
-    
+
+    def marginalize_for_map(self, subclique_vars, marginalization_func):
+        subclique_vars_to_use=list(subclique_vars)
+        resulting_potentials = [-1 for _ in range(2**len(subclique_vars))]
+        for j in range(len(self.potentials)):
+            bits_j=bin(j)[2:].zfill(self.n)
+            if subclique_vars_to_use:
+                bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
+            else:
+                bits_i=0
+            if resulting_potentials[bits_i]==-1:
+                resulting_potentials[bits_i]=self.potentials[j]
+            else:
+                resulting_potentials[bits_i]=marginalization_func(self.potentials[j], resulting_potentials[bits_i])
+        return resulting_potentials
+
 class Graph():
     def __init__(self, n):
         self.adj = [set() for _ in range(n)]
@@ -363,6 +379,23 @@ class JunctionTree():
             if self.cliques[parent].num_children==0:
                 leaf_nodes.append(parent)
 
+    def upward_pass_for_map(self, marginalization_func=marginalization_for_k_map_assignments, composition_func=composition_for_k_map_assignments):
+        self.upward_pass_order=[]
+        leaf_nodes = [i for i in range(len(self.cliques)) if self.cliques[i].num_children==0]
+        i=0
+        while i+1<len(self.cliques):
+            i+=1
+            leaf_node = leaf_nodes.pop()
+            self.upward_pass_order.append(leaf_node)
+            parent = self.parents[leaf_node]
+            # print(self.cliques[leaf_node].variables, self.cliques[leaf_node].potentials)
+            sep_set = self.cliques[leaf_node].variables&self.cliques[parent].variables
+            self.cliques[leaf_node].message = self.cliques[leaf_node].marginalize_for_map(sep_set, marginalization_func)
+            self.cliques[parent].factor_in(sep_set, self.cliques[leaf_node].message, composition_func)
+            self.cliques[parent].num_children-=1
+            if self.cliques[parent].num_children==0:
+                leaf_nodes.append(parent)
+
     def downward_pass(self, marginalization_func):
         # None of our expected outputs requires specialized inverse composition functions in downward_pass
         self.upward_pass_order.reverse()
@@ -525,10 +558,19 @@ class Inference:
                 bin_i = bin(i)[2:].zfill(len(clique.variables))
                 for j in range(len(bin_i)):
                     l[list(clique.variables)[j]]=bin_i[j]
-                heapq.heappush(potentials[i], ("".join(l), clique.potentials[i][0]))
+                heapq.heappush(potentials[i], (clique.potentials[i][0], "".join(l)))
             clique.potentials=potentials
-            # self.junction_tree.upward_pass(marginalization_for_k_map_assignments, composition_for_k_map_assignments)
-            # print(self.junction_tree.cliques[0].marginalize(set(), marginalization_for_k_map_assignments))
+        self.junction_tree.upward_pass_for_map(marginalization_for_k_map_assignments, composition_for_k_map_assignments)
+        # for clique in self.junction_tree.cliques:
+        #     print(clique.variables, clique.potentials)
+        # print(self.junction_tree.cliques[0].potentials)
+        result=self.junction_tree.cliques[0].marginalize_for_map(set(), marginalization_for_k_map_assignments)[0]
+        top_k_assignments = []
+        while result:
+            top=heapq.heappop(result)
+            top_k_assignments.append({"assignment": [int(x) for x in list(top[1])], "probability": top[0]/self.Z})
+        top_k_assignments.reverse()
+        return top_k_assignments
 
 
 
