@@ -1,0 +1,72 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage[includefoot,bottom=12pt]{geometry}
+\usepackage{hyperref}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{bbm}
+\usepackage{tikz}
+
+\geometry{left=1.25in}
+
+\pagestyle{fancy}
+% \fancyhead{}
+% \fancyfoot{}
+
+\makeatletter
+\newcommand*{\centernot}{%
+  \mathpalette\@centernot
+}
+\def\@centernot#1#2{%
+  \mathrel{%
+    \rlap{%
+      \settowidth\dimen@{$\m@th#1{#2}$}%
+      \kern.5\dimen@
+      \settowidth\dimen@{$\m@th#1=$}%
+      \kern-.5\dimen@
+      $\m@th#1\not$%
+    }%
+    {#2}%
+  }%
+}
+\makeatother
+
+\newcommand{\independent}{\perp\mkern-9.5mu\perp}
+\newcommand{\notindependent}{\centernot{\independent}}
+
+\fancyhead[R]{Neeraje - 23B0940}
+\fancyhead[L]{\leftmark}
+
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+
+\title{AML Assignment-1}
+
+\author{Aditya Neeraje}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\pagenumbering{gobble}
+
+\newpage
+
+\pagenumbering{arabic}
+\section{Generating and Triangulating the Graph}
+Some of the preprocessing starts when I initialize the Inference class itself. I create an instance of the Graph class, and add edges in it according to the cliques in the given graph. I also note how many cliques each vertex is part of, which comes in handy later to speed up finding simplicial vertices.\\
+Here, to avoid incorrect counting of the number of cliques a node is in if one of the input cliques is a subset of another, I sort the cliques in increasing order of sizes, and consider a clique only if it is maximal (and consider only one clique if there are multiple instances of the exact same clique in the graph).\\
+I then store the graph's state (adjacency list, number of cliques and number of neighbours, etc\.) so that I can revert to the original state after triangulating using one heuristic (say, min-neighbours), before triangulating based on another heuristic (say, min-fill).\\
+\\
+Then, when \texttt{triangulate\_and\_get\_cliques} is called, the heuristic is used to find a close-to-optimal triangulation of the graph. Since the implementation of all heuristics is fundamentally very similar, I will here only elaborate on the implementation of min-neighbours. First, I separate the corner case of nodes with no neighbours, and start maintaining a list of simplicial nodes. While there are nodes yet to be included in the ordering, I search for simplicial nodes and add them to the ordering, and implicity delete it from the graph by setting its number of neighbours to 0 (which is the check I use later to see if a node is deleted). I keep updating the cliques by removing nodes which have been eliminated, until I no longer find any simplicial vertex. Now, we choose the vertex with the fewest neighbours, and create a new clique with it and its neighbours. I also delete all those cliques which earlier contained this vertex. Now, if the addition of this clique causes a previous clique to not remain maximal, I delete that clique. I keep repeating this process until all nodes are eliminated.
+
+\section{Junction Tree Creation}
+
+\end{document}

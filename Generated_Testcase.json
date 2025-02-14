@@ -3,8 +3,8 @@
         "TestCaseNumber": 1,
         "Input": {
             "TestCaseNumber": 1,
-            "VariablesCount": 3,
-            "Potentials_count": 2,
+            "VariablesCount": 5,
+            "Potentials_count": 4,
             "Cliques and Potentials": [
                 {
                     "clique_size": 2,
@@ -13,10 +13,23 @@
                         1
                     ],
                     "potentials": [
-                        4,
-                        1,
-                        2,
+                        66,
+                        10,
+                        70,
                         3
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        0,
+                        2
+                    ],
+                    "potentials": [
+                        78,
+                        29,
+                        56,
+                        80
                     ]
                 },
                 {
@@ -26,10 +39,122 @@
                         2
                     ],
                     "potentials": [
-                        2,
+                        51,
+                        52,
+                        27,
+                        69
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        3,
+                        4
+                    ],
+                    "potentials": [
+                        91,
+                        4,
+                        22,
+                        88
+                    ]
+                }
+            ],
+            "k value (in top k)": 2
+        }
+    },
+    {
+        "TestCaseNumber": 2,
+        "Input": {
+            "TestCaseNumber": 2,
+            "VariablesCount": 2,
+            "Potentials_count": 2,
+            "Cliques and Potentials": [
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        0,
+                        1
+                    ],
+                    "potentials": [
+                        65,
+                        34,
+                        44,
+                        93
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        0,
+                        1
+                    ],
+                    "potentials": [
+                        58,
+                        73,
+                        39,
+                        22
+                    ]
+                }
+            ],
+            "k value (in top k)": 2
+        }
+    },
+    {
+        "TestCaseNumber": 3,
+        "Input": {
+            "TestCaseNumber": 3,
+            "VariablesCount": 5,
+            "Potentials_count": 4,
+            "Cliques and Potentials": [
+                {
+                    "clique_size": 3,
+                    "cliques": [
+                        0,
                         1,
-                        5,
                         2
+                    ],
+                    "potentials": [
+                        88,
+                        33,
+                        67,
+                        12,
+                        91,
+                        62,
+                        90,
+                        39
+                    ]
+                },
+                {
+                    "clique_size": 2,
+                    "cliques": [
+                        0,
+                        1
+                    ],
+                    "potentials": [
+                        68,
+                        8,
+                        9,
+                        41
+                    ]
+                },
+                {
+                    "clique_size": 1,
+                    "cliques": [
+                        3
+                    ],
+                    "potentials": [
+                        76,
+                        13
+                    ]
+                },
+                {
+                    "clique_size": 1,
+                    "cliques": [
+                        4
+                    ],
+                    "potentials": [
+                        64,
+                        57
                     ]
                 }
             ],

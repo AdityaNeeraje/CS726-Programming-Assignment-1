@@ -9,6 +9,7 @@ import heapq
 
 ########################################################################
 
+# For the theory, in addition to the slides, https://ocw.mit.edu/courses/6-438-algorithms-for-inference-fall-2014/1faaccb44f78c4f4e99c6814842082a0_MIT6_438F14_Lec8.pdf and the Koller Friedman book were used as references
 k=0
 
 def max_func(a, b):
@@ -93,7 +94,10 @@ class Clique:
         subclique_vars_to_use=list(subclique_vars)
         for j in range(len(self.potentials)):
             bits_j=bin(j)[2:].zfill(self.n)
-            bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
+            try:
+                bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
+            except:
+                bits_i=0
             # print(bits_i)
             self.potentials[j]=composition_func(self.potentials[j], subclique_potentials[bits_i])
         # for i in range(2**len(subclique_vars)):
@@ -111,8 +115,10 @@ class Clique:
         subclique_vars_to_use=list(subclique_vars)
         for j in range(len(self.potentials)):
             bits_j=bin(j)[2:].zfill(self.n)
-            bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
-            # print(bits_i)
+            try:
+                bits_i=int("".join([bits_j[self.vars_mapping[subclique_vars_to_use[k]]] for k in range(len(subclique_vars_to_use))]), 2)
+            except:
+                bits_i=0
             self.potentials[j]=inverse_composition_func(self.potentials[j], subclique_potentials[bits_i])
 
     def marginalize(self, subclique_vars, marginalization_func):
@@ -180,9 +186,9 @@ class Graph():
     def min_neighbours_heuristic(self):
         ### TODO Make sure you deep copy before making any move. -> Nvm, this has been dealt with. I have implemented a save and restore functionality
         num_neighbours = [len(neighbours) for neighbours in self.adj]
-        i=self.n
         simplicial = [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and num_neighbours[i]>0]
         ordering = [i for i in range(self.n) if num_neighbours[i]==0]
+        i=self.n-len(ordering)
         while i>0:
             while simplicial:
                 node = simplicial.pop() # The node is in only one clique
@@ -244,9 +250,9 @@ class Graph():
     def min_fill_heuristic(self):
         num_neighbours = [len(neighbours) for neighbours in self.adj]
         num_fill = [sum([u!=v and u not in self.adj[v] for u in self.adj[i] for v in self.adj[i]])//2 for i in range(self.n)]
-        i=self.n
         simplicial = [i for i in range(self.n) if len(self.vertex_to_cliques_mapping[i])==1 and num_neighbours[i]>0]
         ordering = [i for i in range(self.n) if num_neighbours[i]==0]
+        i=self.n-len(ordering)
         while i>0:
             while simplicial:
                 node = simplicial.pop() # The node is in only one clique
@@ -350,18 +356,20 @@ class JunctionTree():
         self.dfs()
 
     def dfs(self):
-        st = [0]
-        self.parents = [None]*(len(self.cliques))
-        self.parents[0]=0
+        st=[]
+        self.parents = [i for i in range(len(self.cliques))]
         visited = [False]*len(self.cliques)
-        while st:
-            curr = st.pop()
-            visited[curr]=True
-            for neighbour in self.final_edges[curr]:
-                if not visited[neighbour]:
-                    st.append(neighbour)
-                    self.parents[neighbour]=curr
-                    self.cliques[curr].num_children+=1
+        for i in range(len(self.cliques)):
+            if not visited[i]:
+                st.append(i)
+                while st:
+                    curr = st.pop()
+                    visited[curr]=True
+                    for neighbour in self.final_edges[curr]:
+                        if not visited[neighbour]:
+                            st.append(neighbour)
+                            self.parents[neighbour]=curr
+                            self.cliques[curr].num_children+=1
 
     def upward_pass(self, marginalization_func, composition_func=product_func):
         self.upward_pass_order=[]
@@ -431,9 +439,12 @@ class Inference:
         k=self.k
         self.graph = Graph(self.variables_count)
         self.Z = None
-        for clique in data['Cliques and Potentials']:
-            ### TODO First check if the clique is already there. This is very important for the algorithm, but it is okay to do this with slightly bad complexity.
-            ### I would implement this as follows: add all cliques in decreasing order of size. When adding a clique, check if it actually adds a new edge. If it doesn't, return
+        self.data_cliques.sort(key=lambda x: len(x['cliques'])) # This is to deal with the corner case of two cliques being the same. This way, the first clique is contained in a future clique and is not included but the future clique is.
+        for i in range(len(self.data_cliques)):
+            clique=data['Cliques and Potentials'][i]
+            # Check if the clique is a subset of a future clique (of larger or equal size, except in the corner case mentioned above)
+            if not all([any([unique_member not in data['Cliques and Potentials'][j]['cliques'] for unique_member in clique['cliques']]) for j in range(i+1, len(self.data_cliques))]):
+                continue
             self.graph.add_clique(clique['cliques'])
         self.graph.store_graph_state()
         # self.triangulate_and_get_cliques()
@@ -610,6 +621,6 @@ class Get_Input_and_Check_Output:
 
 if __name__ == '__main__':
     # evaluator = Get_Input_and_Check_Output('Sample_Testcase.json')
-    evaluator = Get_Input_and_Check_Output('Sample_Testcase.json')
+    evaluator = Get_Input_and_Check_Output('Generated_Testcase.json')
     evaluator.get_output()
     evaluator.write_output('Sample_Testcase_Output.json')
