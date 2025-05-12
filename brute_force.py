@@ -633,6 +633,7 @@ class Get_Input_and_Check_Output:
 
 if __name__ == '__main__':
     # evaluator = Get_Input_and_Check_Output('Sample_Testcase.json')
+    # evaluator = Get_Input_and_Check_Output('TestCases.json')
     evaluator = Get_Input_and_Check_Output('Generated_Testcase.json')
     evaluator.get_output()
     evaluator.write_output('Brute_Force_Output.json')
